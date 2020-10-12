@@ -48,6 +48,10 @@ type HTTPConfig struct {
 	// Client. If set, this option overrides InsecureSkipVerify.
 	TLSConfig *tls.Config
 
+	// HTTPTransport allow the user to pass on the whole http layer to the client
+	// use with caution -> replace all other transport related configuration
+	HTTPTransport *http.Transport
+
 	// Proxy configures the Proxy function on the HTTP client.
 	Proxy func(req *http.Request) (*url.URL, error)
 
@@ -112,13 +116,19 @@ func NewHTTPClient(conf HTTPConfig) (Client, error) {
 		return nil, errors.New(m)
 	}
 
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: conf.InsecureSkipVerify,
-		},
-		Proxy:       conf.Proxy,
-		DialContext: conf.DialContext,
+	var tr *http.Transport
+	if conf.HTTPTransport == nil {
+		tr = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: conf.InsecureSkipVerify,
+			},
+			Proxy:       conf.Proxy,
+			DialContext: conf.DialContext,
+		}
+	} else {
+		tr = conf.HTTPTransport
 	}
+
 	if conf.TLSConfig != nil {
 		tr.TLSClientConfig = conf.TLSConfig
 		// Make sure to preserve the InsecureSkipVerify setting from the config.
